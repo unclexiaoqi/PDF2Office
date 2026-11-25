@@ -1,0 +1,36 @@
+# ---------- 构建产物（体积大，只放 GitHub Releases，不进 git）----------
+/dist/
+/build/
+/installer/output/
+
+# ---------- 发布用二进制 / 压缩包 ----------
+*.exe
+*.zip
+*.7z
+/SHA256SUMS.txt
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# ---------- 工具缓存 ----------
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ---------- 编辑器 / 系统 ----------
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---------- 运行时产物 ----------
+*.log
+/stubs/

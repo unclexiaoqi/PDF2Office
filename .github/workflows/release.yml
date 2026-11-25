@@ -1,0 +1,83 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.22,<7"
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $m = Select-String -Path app.py -Pattern 'APP_VERSION\s*=\s*"([^"]+)"'
+          if (-not $m) { throw "app.py 里找不到 APP_VERSION" }
+          "version=$($m.Matches[0].Groups[1].Value)" >> $env:GITHUB_OUTPUT
+
+      - name: Build exe (PyInstaller)
+        run: powershell -ExecutionPolicy Bypass -File build.ps1
+
+      - name: Build installer (Inno Setup)
+        run: |
+          choco install innosetup --no-progress -y
+          powershell -ExecutionPolicy Bypass -File installer\build_installer.ps1
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          Compress-Archive -Path dist\PDF2Office -DestinationPath "dist\PDF2Office-$v-Portable.zip" -Force
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $files = @(
+            "installer\output\PDF2Office-$v-Setup.exe",
+            "dist\PDF2Office-$v-Portable.zip"
+          )
+          $lines = foreach ($f in $files) {
+            "$((Get-FileHash $f -Algorithm SHA256).Hash.ToLower())  $(Split-Path $f -Leaf)"
+          }
+          $lines | Set-Content -Encoding ascii SHA256SUMS.txt
+
+      - name: Upload artifacts (every run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF2Office-${{ steps.ver.outputs.version }}
+          path: |
+            installer/output/*-Setup.exe
+            dist/*-Portable.zip
+            SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PDF2Office ${{ steps.ver.outputs.version }}
+          # 对外文档必须带「特别说明」：正文固定用这个模板，不要改成自动生成
+          body_path: .github/RELEASE_BODY.md
+          files: |
+            installer/output/*-Setup.exe
+            dist/*-Portable.zip
+            SHA256SUMS.txt

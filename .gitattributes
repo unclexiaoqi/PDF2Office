@@ -1,0 +1,16 @@
+* text=auto
+
+# 换行符：脚本与 Inno 脚本保持 CRLF，其余按 LF
+*.py   text eol=lf
+*.md   text eol=lf
+*.iss  text eol=crlf
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# 二进制文件不做行尾转换
+*.png  binary
+*.ico  binary
+*.docx binary
+*.pptx binary
+*.pdf  binary
